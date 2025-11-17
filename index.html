@@ -4,9 +4,38 @@
     <meta charset="UTF-8">
     <title>统一上传为1.png</title>
     <style>
-        .upload-container { width: 600px; margin: 80px auto; text-align: center; }
-        #fileInput { margin: 20px 0; padding: 10px; }
-        #uploadBtn { padding: 12px 30px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        /* 页面背景图样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url("【你的背景图COS URL】");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        /* 上传容器样式（半透明白背景） */
+        .upload-container { 
+            width: 600px; 
+            margin: 80px auto; 
+            text-align: center; 
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #fileInput { margin: 20px 0; padding: 10px; width: 80%; }
+        #uploadBtn { 
+            padding: 12px 30px; 
+            background: #2563eb; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+        }
         #result { margin-top: 25px; font-size: 15px; line-height: 1.6; }
         .tip { color: #666; margin-bottom: 10px; }
     </style>
@@ -24,7 +53,7 @@
         const cosConfig = {
             bucket: "shenqideyu-1309822099",
             region: "ap-nanjing",
-            uploadDir: "SnsShare/SocialProfile/上传/" // 目标目录（自动生成）
+            uploadDir: "SnsShare/SocialProfile/上传/"
         };
 
         document.getElementById('uploadBtn').addEventListener('click', async () => {
@@ -36,7 +65,6 @@
                 return;
             }
 
-            // 固定文件名：1.png，固定路径拼接
             const fileName = "1.png";
             const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}${fileName}`;
 
