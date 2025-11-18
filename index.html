@@ -2,7 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>统一上传为1.png</title>
+    <title>王者名片上传图片（自动重命名为1.png）</title>
+    <!-- 1. 引入腾讯云开发SDK -->
+    <script src="https://imgcache.qq.com/qcloud/tcbjs/1.11.4/tcb.js"></script>
     <style>
         /* 页面背景图样式 */
         body {
@@ -27,7 +29,7 @@
         }
 
         #fileInput { margin: 20px 0; padding: 10px; width: 80%; }
-        #uploadBtn { 
+        .btn { 
             padding: 12px 30px; 
             background: #2563eb; 
             color: white; 
@@ -35,6 +37,7 @@
             border-radius: 6px; 
             cursor: pointer; 
             font-size: 16px; 
+            margin: 5px;
         }
         #result { margin-top: 25px; font-size: 15px; line-height: 1.6; }
         .tip { color: #666; margin-bottom: 10px; }
@@ -51,6 +54,40 @@
             color: #666;
             font-size: 14px;
             margin-top: 8px;
+        }
+        /* 大区选择弹窗样式 */
+        .area-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .area-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .area-option {
+            padding: 10px 20px;
+            margin: 8px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .area-option:hover {
+            background: #e0e0e0;
+        }
+        /* 上传记录列表样式 */
+        #recordList {
+            margin-top: 20px;
+            text-align: left;
         }
     </style>
 </head>
@@ -70,8 +107,25 @@
         <p class="image-desc">上传完成等待二维码</p>
 
         <input type="file" id="fileInput" accept="image/*" required>
-        <button id="uploadBtn">立即上传</button>
+        <!-- 新增选择大区按钮 -->
+        <button id="areaBtn" class="btn">选择大区</button>
+        <button id="uploadBtn" class="btn">立即上传</button>
+        <!-- 2. 新增“查看上传记录”按钮 -->
+        <button id="viewRecordBtn" class="btn">查看上传记录</button>
         <div id="result"></div>
+        <!-- 用于展示上传记录 -->
+        <div id="recordList"></div>
+    </div>
+
+    <!-- 大区选择弹窗 -->
+    <div id="areaModal" class="area-modal">
+        <div class="area-content">
+            <h3>选择游戏大区</h3>
+            <button class="area-option" data-area="安卓QQ">安卓QQ</button>
+            <button class="area-option" data-area="安卓微信">安卓微信</button>
+            <button class="area-option" data-area="苹果QQ">苹果QQ</button>
+            <button class="area-option" data-area="苹果微信">苹果微信</button>
+        </div>
     </div>
 
     <script>
@@ -81,6 +135,38 @@
             uploadDir: "SnsShare/SocialProfile/上传/"
         };
 
+        // 3. 初始化腾讯云开发（替换为你的云开发环境ID）
+        const app = tcb.init({
+            env: "cloud1-5gu98l0i7bf3a3ce" // 需替换：在云开发控制台“环境设置”中复制
+        });
+        const auth = app.auth();
+        const db = app.database();
+        // 匿名登录（测试用，正式环境需替换为用户登录）
+        auth.anonymousAuthProvider().signIn().then(() => {
+            console.log('云开发匿名登录成功，可记录上传信息');
+        });
+
+        // 大区选择相关逻辑
+        const areaModal = document.getElementById('areaModal');
+        const areaBtn = document.getElementById('areaBtn');
+        const areaOptions = document.querySelectorAll('.area-option');
+        let selectedArea = ''; // 存储选中的大区
+
+        // 打开大区选择弹窗
+        areaBtn.addEventListener('click', () => {
+            areaModal.style.display = 'flex';
+        });
+
+        // 选择大区并关闭弹窗
+        areaOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                selectedArea = option.dataset.area;
+                areaBtn.textContent = `当前大区：${selectedArea}`;
+                areaModal.style.display = 'none';
+            });
+        });
+
+        // 上传逻辑
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
@@ -89,11 +175,15 @@
                 alert("请选择要上传的图片！");
                 return;
             }
+            if (!selectedArea) {
+                alert("请先选择大区！");
+                return;
+            }
 
             const fileName = "1.png";
             const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}${fileName}`;
 
-            document.getElementById('result').textContent = "正在上传...";
+            document.getElementById('result').textContent = `正在上传（当前大区：${selectedArea}）...`;
 
             try {
                 const response = await fetch(uploadUrl, {
@@ -103,8 +193,17 @@
                 });
 
                 if (response.ok) {
+                    // 4. 上传成功后，把“大区+图片链接”存到云开发数据库
+                    await app.callFunction({
+                        name: "saveUploadRecord", // 需与你创建的云函数名称一致
+                        data: {
+                            area: selectedArea,
+                            imgUrl: uploadUrl
+                        }
+                    });
+
                     document.getElementById('result').innerHTML = `
-                        上传成功！<br>
+                        上传成功（当前大区：${selectedArea}）！<br>
                         最终文件URL：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
                         （新上传会覆盖此文件，请谨慎操作）
                     `;
@@ -114,6 +213,32 @@
             } catch (e) {
                 document.getElementById('result').textContent = `上传出错：${e.message}`;
             }
+        });
+
+        // 5. 查看上传记录的逻辑
+        document.getElementById('viewRecordBtn').addEventListener('click', async () => {
+            // 从云开发数据库读取所有上传记录
+            const res = await db.collection('upload_records').get(); // 需与你创建的集合名称一致
+            const records = res.data;
+
+            // 渲染记录列表
+            if (records.length === 0) {
+                document.getElementById('recordList').innerHTML = "<p>暂无上传记录</p>";
+                return;
+            }
+
+            let recordHtml = "<h3>上传历史记录</h3>";
+            records.forEach(item => {
+                const localTime = new Date(item.uploadTime).toLocaleString();
+                recordHtml += `
+                    <div style="margin:10px 0; padding:10px; border:1px solid #eee; border-radius:4px;">
+                        时间：${localTime}<br>
+                        大区：${item.area}<br>
+                        图片：<a href="${item.imgUrl}" target="_blank">点击查看</a>
+                    </div>
+                `;
+            });
+            document.getElementById('recordList').innerHTML = recordHtml;
         });
     </script>
 </body>
