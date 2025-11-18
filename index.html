@@ -2,59 +2,58 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>王者名片上传（带云开发错误捕获）</title>
-    
-    <!-- 1. 先引入云开发SDK（必须放在最顶部） -->
-    <script src="https://webapp.tencentcloudbase.com/tcbjs/2.18.0/tcb.js"></script>
-
-    <!-- 2. 再执行tcb的判断代码（包裹在<script>内，且在SDK之后） -->
-    <script>
-        // 测试SDK是否加载成功
-        if (typeof tcb === "undefined") {
-            alert("SDK未加载成功，请检查网络或链接是否正确");
-        } else {
-            alert("SDK加载成功");
-        }
-    </script>
-
-    <!-- 3. 样式代码 -->
+    <title>统一上传为1.png</title>
     <style>
+        /* 页面背景图样式 */
         body {
             margin: 0;
             padding: 0;
             background-image: url("https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/bg.png");
             background-size: cover;
             background-position: center;
+            background-attachment: fixed;
             min-height: 100vh;
         }
-        .upload-container {
-            width: 600px;
-            margin: 80px auto;
-            text-align: center;
-            background-color: rgba(255,255,255,0.8);
+
+        /* 上传容器样式（半透明白背景） */
+        .upload-container { 
+            width: 600px; 
+            margin: 80px auto; 
+            text-align: center; 
+            background-color: rgba(255, 255, 255, 0.8);
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+
         #fileInput { margin: 20px 0; padding: 10px; width: 80%; }
-        .btn {
-            padding: 12px 30px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
+        .btn { 
+            padding: 12px 30px; 
+            background: #2563eb; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
             margin: 5px;
         }
         #result { margin-top: 25px; font-size: 15px; line-height: 1.6; }
+        .tip { color: #666; margin-bottom: 10px; }
+        /* 新增图片的样式 */
         .related-image {
             margin: 15px 0;
-            max-width: 100%;
-            height: auto;
-            border-radius: 6px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+            max-width: 100%; /* 图片自适应容器宽度，不超出范围 */
+            height: auto; /* 保持宽高比 */
+            border-radius: 6px; /* 圆角美化 */
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1); /* 轻微阴影增加层次感 */
+            cursor: pointer; /* 鼠标悬浮显示“可点击”样式 */
         }
+        .image-desc {
+            color: #666;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        /* 大区选择弹窗样式 */
         .area-modal {
             display: none;
             position: fixed;
@@ -80,33 +79,37 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        #recordList {
-            margin-top: 20px;
-            text-align: left;
+        .area-option:hover {
+            background: #e0e0e0;
         }
     </style>
 </head>
 <body>
     <div class="upload-container">
-        <h1>王者名片上传图片</h1>
-        <p class="tip">提示：上传会覆盖同一文件，仅保留最新图片</p>
+        <h1>王者名片上传图片（自动重命名为1.png）</h1>
+        <p class="tip">提示：所有上传会覆盖同一文件，最终仅保留最新上传的图片</p>
         
+        <!-- 原链接转为图片（点击图片可打开原图） -->
         <a href="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" target="_blank">
-            <img src="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" class="related-image">
+            <img 
+                src="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" 
+                alt="相关图片" 
+                class="related-image"
+            >
         </a>
-        <p>上传完成等待二维码</p>
+        <p class="image-desc">上传完成等待二维码</p>
 
         <input type="file" id="fileInput" accept="image/*" required>
+        <!-- 新增选择大区按钮 -->
         <button id="areaBtn" class="btn">选择大区</button>
         <button id="uploadBtn" class="btn">立即上传</button>
-        <button id="viewRecordBtn" class="btn">查看上传记录</button>
         <div id="result"></div>
-        <div id="recordList"></div>
     </div>
 
+    <!-- 大区选择弹窗 -->
     <div id="areaModal" class="area-modal">
         <div class="area-content">
-            <h3>选择大区</h3>
+            <h3>选择游戏大区</h3>
             <button class="area-option" data-area="安卓QQ">安卓QQ</button>
             <button class="area-option" data-area="安卓微信">安卓微信</button>
             <button class="area-option" data-area="苹果QQ">苹果QQ</button>
@@ -115,50 +118,24 @@
     </div>
 
     <script>
-        // COS配置（保持原配置）
         const cosConfig = {
             bucket: "shenqideyu-1309822099",
             region: "ap-nanjing",
             uploadDir: "SnsShare/SocialProfile/上传/"
         };
 
-        // 大区选择变量
-        let selectedArea = '';
+        // 大区选择相关逻辑
         const areaModal = document.getElementById('areaModal');
         const areaBtn = document.getElementById('areaBtn');
         const areaOptions = document.querySelectorAll('.area-option');
+        let selectedArea = ''; // 存储选中的大区
 
-
-        // --------------------------
-        // 步骤1：初始化云开发+测试登录
-        // --------------------------
-        let app = null; // 全局存云开发实例
-        (async function initCloudBase() {
-            try {
-                // 替换为你的云开发环境ID（已填写正确）
-                app = tcb.init({ env: "cloud1-5gu98l0i7bf3a3ce" });
-                const auth = app.auth();
-
-                // 测试匿名登录（云开发基础权限）
-                await auth.anonymousAuthProvider().signIn();
-                alert("✅ 云开发初始化+登录成功！");
-            } catch (err) {
-                // 云开发初始化/登录失败，弹具体错误（关键排查信息）
-                alert("❌ 云开发初始化失败：" + err.message);
-                return; // 初始化失败，后面云相关功能不执行
-            }
-        })();
-
-
-        // --------------------------
-        // 步骤2：大区选择功能（基础按钮）
-        // --------------------------
-        // 打开大区弹窗
+        // 打开大区选择弹窗
         areaBtn.addEventListener('click', () => {
             areaModal.style.display = 'flex';
         });
 
-        // 选择大区
+        // 选择大区并关闭弹窗
         areaOptions.forEach(option => {
             option.addEventListener('click', () => {
                 selectedArea = option.dataset.area;
@@ -167,93 +144,43 @@
             });
         });
 
-
-        // --------------------------
-        // 步骤3：上传+调用云函数存记录
-        // --------------------------
+        // 上传逻辑
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             
-            // 基础校验
-            if (!file) { alert("请选图片！"); return; }
-            if (!selectedArea) { alert("请选大区！"); return; }
-            if (!app) { alert("云开发未初始化，无法存记录！"); return; }
+            if (!file) {
+                alert("请选择要上传的图片！");
+                return;
+            }
+            if (!selectedArea) {
+                alert("请先选择大区！");
+                return;
+            }
 
-            // 上传到COS
-            const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}1.png`;
-            document.getElementById('result').textContent = "正在上传...";
+            const fileName = "1.png";
+            const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}${fileName}`;
+
+            document.getElementById('result').textContent = `正在上传（当前大区：${selectedArea}）...`;
 
             try {
-                // 1. 上传图片到COS
-                const cosRes = await fetch(uploadUrl, {
+                const response = await fetch(uploadUrl, {
                     method: 'PUT',
                     body: file,
                     headers: { "Content-Type": file.type }
                 });
 
-                if (!cosRes.ok) {
-                    document.getElementById('result').textContent = `COS上传失败：${cosRes.statusText}`;
-                    return;
-                }
-
-                // 2. 调用云函数存记录（加错误捕获）
-                try {
-                    const cloudRes = await app.callFunction({
-                        name: "saveUploadRecord", // 替换为你的云函数名称
-                        data: { area: selectedArea, imgUrl: uploadUrl }
-                    });
-
-                    // 云函数返回结果提示
-                    if (cloudRes.result.code === 200) {
-                        document.getElementById('result').innerHTML = `
-                            上传成功！<br>
-                            图片链接：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
-                            记录状态：${cloudRes.result.msg}
-                        `;
-                    } else {
-                        document.getElementById('result').textContent = `记录失败：${cloudRes.result.msg}`;
-                    }
-                } catch (cloudErr) {
-                    document.getElementById('result').textContent = `调用云函数失败：${cloudErr.message}`;
-                }
-            } catch (cosErr) {
-                document.getElementById('result').textContent = `上传出错：${cosErr.message}`;
-            }
-        });
-
-
-        // --------------------------
-        // 步骤4：查看上传记录（查数据库）
-        // --------------------------
-        document.getElementById('viewRecordBtn').addEventListener('click', async () => {
-            if (!app) { alert("云开发未初始化，无法查记录！"); return; }
-
-            try {
-                // 查数据库集合（替换为你的集合名称）
-                const dbRes = await app.database().collection('upload_records').get();
-                const records = dbRes.data;
-
-                // 渲染记录
-                if (records.length === 0) {
-                    document.getElementById('recordList').innerHTML = "<p>暂无记录</p>";
-                    return;
-                }
-
-                let html = "<h3>上传记录</h3>";
-                records.forEach(item => {
-                    const time = new Date(item.uploadTime).toLocaleString();
-                    html += `
-                        <div style="margin:10px 0; padding:10px; border:1px solid #eee; border-radius:4px;">
-                            时间：${time}<br>
-                            大区：${item.area}<br>
-                            图片：<a href="${item.imgUrl}" target="_blank">查看</a>
-                        </div>
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = `
+                        上传成功（当前大区：${selectedArea}）！<br>
+                        最终文件URL：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
+                        （新上传会覆盖此文件，请谨慎操作）
                     `;
-                });
-                document.getElementById('recordList').innerHTML = html;
-            } catch (dbErr) {
-                alert("查询记录失败：" + dbErr.message);
+                } else {
+                    document.getElementById('result').textContent = `上传失败：${response.statusText}`;
+                }
+            } catch (e) {
+                document.getElementById('result').textContent = `上传出错：${e.message}`;
             }
         });
     </script>
