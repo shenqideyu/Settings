@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>统一上传为1.png</title>
+    <title>王者名片上传图片</title>
     <style>
         /* 页面背景图样式 */
         body {
@@ -39,14 +39,14 @@
         }
         #result { margin-top: 25px; font-size: 15px; line-height: 1.6; }
         .tip { color: #666; margin-bottom: 10px; }
-        /* 新增图片的样式 */
+        /* 图片样式 */
         .related-image {
             margin: 15px 0;
-            max-width: 100%; /* 图片自适应容器宽度，不超出范围 */
-            height: auto; /* 保持宽高比 */
-            border-radius: 6px; /* 圆角美化 */
-            box-shadow: 0 1px 5px rgba(0,0,0,0.1); /* 轻微阴影增加层次感 */
-            cursor: pointer; /* 鼠标悬浮显示“可点击”样式 */
+            max-width: 100%; 
+            height: auto; 
+            border-radius: 6px; 
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1); 
+            cursor: pointer; 
         }
         .image-desc {
             color: #666;
@@ -82,6 +82,14 @@
         .area-option:hover {
             background: #e0e0e0;
         }
+        /* 上传信息展示样式 */
+        #uploadInfo {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -89,21 +97,25 @@
         <h1>王者名片上传图片（自动重命名为1.png）</h1>
         <p class="tip">提示：所有上传会覆盖同一文件，最终仅保留最新上传的图片</p>
         
-        <!-- 原链接转为图片（点击图片可打开原图） -->
+        <!-- 最新上传的图片预览 -->
         <a href="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" target="_blank">
             <img 
                 src="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" 
-                alt="相关图片" 
+                alt="最新上传图片" 
                 class="related-image"
             >
         </a>
-        <p class="image-desc">上传完成等待二维码</p>
+        <p class="image-desc">当前展示的是最新上传的图片</p>
 
+        <!-- 操作按钮 -->
         <input type="file" id="fileInput" accept="image/*" required>
-        <!-- 新增选择大区按钮 -->
         <button id="areaBtn" class="btn">选择大区</button>
         <button id="uploadBtn" class="btn">立即上传</button>
+        <button id="viewUploadBtn" class="btn">查看最新上传信息</button> <!-- 新增查看按钮 -->
+        
+        <!-- 结果展示区 -->
         <div id="result"></div>
+        <div id="uploadInfo"></div> <!-- 新增上传信息展示区 -->
     </div>
 
     <!-- 大区选择弹窗 -->
@@ -121,21 +133,20 @@
         const cosConfig = {
             bucket: "shenqideyu-1309822099",
             region: "ap-nanjing",
-            uploadDir: "SnsShare/SocialProfile/上传/"
+            uploadDir: "SnsShare/SocialProfile/上传/",
+            logFile: "SocialProfile/upload_log.json" // 新增：存储上传日志的文件
         };
 
         // 大区选择相关逻辑
         const areaModal = document.getElementById('areaModal');
         const areaBtn = document.getElementById('areaBtn');
         const areaOptions = document.querySelectorAll('.area-option');
-        let selectedArea = ''; // 存储选中的大区
+        let selectedArea = ''; 
 
-        // 打开大区选择弹窗
         areaBtn.addEventListener('click', () => {
             areaModal.style.display = 'flex';
         });
 
-        // 选择大区并关闭弹窗
         areaOptions.forEach(option => {
             option.addEventListener('click', () => {
                 selectedArea = option.dataset.area;
@@ -144,40 +155,70 @@
             });
         });
 
-        // 上传逻辑
+        // 新增：查看最新上传信息
+        document.getElementById('viewUploadBtn').addEventListener('click', async () => {
+            const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
+            try {
+                const response = await fetch(logUrl);
+                if (response.ok) {
+                    const logData = await response.json();
+                    // 展示最新上传的大区、时间、图片
+                    document.getElementById('uploadInfo').innerHTML = `
+                        <h4>最新上传记录</h4>
+                        <p>上传时间：${logData.uploadTime}</p>
+                        <p>选择的大区：${logData.selectedArea}</p>
+                        <p>图片预览：（上方已展示最新图片）</p>
+                    `;
+                } else {
+                    document.getElementById('uploadInfo').textContent = "暂无上传记录";
+                }
+            } catch (e) {
+                document.getElementById('uploadInfo').textContent = `获取失败：${e.message}`;
+            }
+        });
+
+        // 上传逻辑（新增：记录上传日志）
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             
-            if (!file) {
-                alert("请选择要上传的图片！");
-                return;
-            }
-            if (!selectedArea) {
-                alert("请先选择大区！");
-                return;
-            }
+            if (!file) { alert("请选择要上传的图片！"); return; }
+            if (!selectedArea) { alert("请先选择大区！"); return; }
 
             const fileName = "1.png";
             const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}${fileName}`;
-
             document.getElementById('result').textContent = `正在上传（当前大区：${selectedArea}）...`;
 
             try {
-                const response = await fetch(uploadUrl, {
+                // 1. 上传图片
+                const imgResponse = await fetch(uploadUrl, {
                     method: 'PUT',
                     body: file,
                     headers: { "Content-Type": file.type }
                 });
 
-                if (response.ok) {
+                if (imgResponse.ok) {
+                    // 2. 记录上传日志（大区、时间）
+                    const logData = {
+                        uploadTime: new Date().toLocaleString(), // 上传时间
+                        selectedArea: selectedArea, // 选择的大区
+                        imageUrl: "https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png"
+                    };
+                    const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
+                    await fetch(logUrl, {
+                        method: 'PUT',
+                        body: JSON.stringify(logData),
+                        headers: { "Content-Type": "application/json" }
+                    });
+
+                    // 展示上传结果
                     document.getElementById('result').innerHTML = `
                         上传成功（当前大区：${selectedArea}）！<br>
                         最终文件URL：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
                         （新上传会覆盖此文件，请谨慎操作）
                     `;
                 } else {
-                    document.getElementById('result').textContent = `上传失败：${response.statusText}`;
+                    document.getElementById('result').textContent = `上传失败：${imgResponse.statusText}`;
                 }
             } catch (e) {
                 document.getElementById('result').textContent = `上传出错：${e.message}`;
