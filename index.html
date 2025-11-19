@@ -89,13 +89,35 @@
             background: #f8f9fa;
             border-radius: 6px;
             text-align: left;
+            max-height: 300px;
+            overflow-y: auto; /* 滚动条：记录过多时可滚动 */
+        }
+        /* 历史记录条目样式 */
+        .history-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid #2563eb;
+            background: white;
+            border-radius: 4px;
+        }
+        .history-time {
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .history-area {
+            color: #666;
+            margin: 5px 0;
+        }
+        .history-url {
+            font-size: 13px;
+            word-break: break-all; /* 长URL自动换行 */
         }
     </style>
 </head>
 <body>
     <div class="upload-container">
         <h1>王者名片上传图片（自动重命名为1.png）</h1>
-        <p class="tip">提示：所有上传会覆盖同一文件，最终仅保留最新上传的图片</p>
+        <p class="tip">提示：所有上传会覆盖同一文件，但会保留所有上传记录</p>
         
         <!-- 最新上传的图片预览 -->
         <a href="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" target="_blank">
@@ -111,11 +133,11 @@
         <input type="file" id="fileInput" accept="image/*" required>
         <button id="areaBtn" class="btn">选择大区</button>
         <button id="uploadBtn" class="btn">立即上传</button>
-        <button id="viewUploadBtn" class="btn">查看最新上传信息</button> <!-- 新增查看按钮 -->
+        <button id="viewUploadBtn" class="btn">查看所有上传记录</button>
         
         <!-- 结果展示区 -->
         <div id="result"></div>
-        <div id="uploadInfo"></div> <!-- 新增上传信息展示区 -->
+        <div id="uploadInfo"></div> <!-- 上传记录展示区 -->
     </div>
 
     <!-- 大区选择弹窗 -->
@@ -134,7 +156,7 @@
             bucket: "shenqideyu-1309822099",
             region: "ap-nanjing",
             uploadDir: "SnsShare/SocialProfile/上传/",
-            logFile: "SocialProfile/upload_log.json" // 新增：存储上传日志的文件
+            logFile: "SocialProfile/upload_log.json" // 存储历史记录的日志文件
         };
 
         // 大区选择相关逻辑
@@ -155,73 +177,113 @@
             });
         });
 
-        // 新增：查看最新上传信息
+        // 核心：查看所有上传历史记录
         document.getElementById('viewUploadBtn').addEventListener('click', async () => {
             const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
+            const uploadInfoEl = document.getElementById('uploadInfo');
+            
             try {
                 const response = await fetch(logUrl);
                 if (response.ok) {
                     const logData = await response.json();
-                    // 展示最新上传的大区、时间、图片
-                    document.getElementById('uploadInfo').innerHTML = `
-                        <h4>最新上传记录</h4>
-                        <p>上传时间：${logData.uploadTime}</p>
-                        <p>选择的大区：${logData.selectedArea}</p>
-                        <p>图片预览：（上方已展示最新图片）</p>
-                    `;
+                    const historyList = logData.history || []; // 历史记录数组（核心修改）
+
+                    if (historyList.length === 0) {
+                        uploadInfoEl.textContent = "暂无上传记录";
+                        return;
+                    }
+
+                    // 生成历史记录HTML（按时间倒序：最新的在最上面）
+                    let historyHtml = `<h4>所有上传记录（共 ${historyList.length} 条）</h4>`;
+                    historyList.reverse().forEach((item, index) => {
+                        historyHtml += `
+                            <div class="history-item">
+                                <div class="history-time">${index + 1}. 上传时间：${item.uploadTime}</div>
+                                <div class="history-area">游戏大区：${item.selectedArea}</div>
+                                <div class="history-url">
+                                    图片URL：<a href="${item.imageUrl}" target="_blank">${item.imageUrl}</a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    uploadInfoEl.innerHTML = historyHtml;
+
                 } else {
-                    document.getElementById('uploadInfo').textContent = "暂无上传记录";
+                    // 日志文件不存在：初始化空记录
+                    uploadInfoEl.textContent = "暂无上传记录（日志文件未创建）";
                 }
             } catch (e) {
-                document.getElementById('uploadInfo').textContent = `获取失败：${e.message}`;
+                uploadInfoEl.textContent = `获取记录失败：${e.message}`;
             }
         });
 
-        // 上传逻辑（新增：记录上传日志）
+        // 核心：上传图片并保存历史记录（不覆盖旧记录）
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
+            const resultEl = document.getElementById('result');
             
             if (!file) { alert("请选择要上传的图片！"); return; }
             if (!selectedArea) { alert("请先选择大区！"); return; }
 
             const fileName = "1.png";
             const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}${fileName}`;
-            document.getElementById('result').textContent = `正在上传（当前大区：${selectedArea}）...`;
+            resultEl.textContent = `正在上传（当前大区：${selectedArea}）...`;
 
             try {
-                // 1. 上传图片
+                // 步骤1：先上传图片文件
                 const imgResponse = await fetch(uploadUrl, {
                     method: 'PUT',
                     body: file,
                     headers: { "Content-Type": file.type }
                 });
 
-                if (imgResponse.ok) {
-                    // 2. 记录上传日志（大区、时间）
-                    const logData = {
-                        uploadTime: new Date().toLocaleString(), // 上传时间
-                        selectedArea: selectedArea, // 选择的大区
-                        imageUrl: "https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png"
-                    };
-                    const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
-                    await fetch(logUrl, {
-                        method: 'PUT',
-                        body: JSON.stringify(logData),
-                        headers: { "Content-Type": "application/json" }
-                    });
-
-                    // 展示上传结果
-                    document.getElementById('result').innerHTML = `
-                        上传成功（当前大区：${selectedArea}）！<br>
-                        最终文件URL：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
-                        （新上传会覆盖此文件，请谨慎操作）
-                    `;
-                } else {
-                    document.getElementById('result').textContent = `上传失败：${imgResponse.statusText}`;
+                if (!imgResponse.ok) {
+                    throw new Error(`图片上传失败：${imgResponse.statusText}`);
                 }
+
+                // 步骤2：读取现有历史记录（核心修改：不覆盖，只新增）
+                const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
+                let existingHistory = []; // 存储所有旧记录
+
+                try {
+                    // 尝试获取已有的日志文件
+                    const logResponse = await fetch(logUrl);
+                    if (logResponse.ok) {
+                        const logData = await logResponse.json();
+                        existingHistory = logData.history || []; // 取出旧记录数组
+                    }
+                } catch (logErr) {
+                    // 日志文件不存在时，初始化空数组（首次上传）
+                    existingHistory = [];
+                }
+
+                // 步骤3：新增当前上传记录到历史数组
+                const newRecord = {
+                    uploadTime: new Date().toLocaleString(), // 上传时间（精确到分）
+                    selectedArea: selectedArea, // 所选大区
+                    imageUrl: "https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png", // 图片固定URL
+                    fileSize: (file.size / 1024).toFixed(2) + "KB" // 新增：文件大小（优化体验）
+                };
+                existingHistory.push(newRecord); // 追加新记录，不覆盖旧记录
+
+                // 步骤4：将更新后的历史数组写回日志文件
+                await fetch(logUrl, {
+                    method: 'PUT',
+                    body: JSON.stringify({ history: existingHistory }), // 数据结构：{ "history": [{}, {}, ...] }
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                // 步骤5：展示上传成功结果
+                resultEl.innerHTML = `
+                    上传成功（当前大区：${selectedArea}）！<br>
+                    最终文件URL：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
+                    文件大小：${newRecord.fileSize}<br>
+                    点击「查看所有上传记录」可查看历史记录
+                `;
+
             } catch (e) {
-                document.getElementById('result').textContent = `上传出错：${e.message}`;
+                resultEl.textContent = `上传出错：${e.message}`;
             }
         });
     </script>
