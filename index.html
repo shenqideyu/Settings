@@ -2,9 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>王者名片上传图片</title>
+    <title>王者名片上传工具</title>
     <style>
-        /* 页面背景图样式 */
+        /* 页面背景：适配游戏风格 */
         body {
             margin: 0;
             padding: 0;
@@ -13,47 +13,87 @@
             background-position: center;
             background-attachment: fixed;
             min-height: 100vh;
+            font-family: "Microsoft Yahei", sans-serif;
         }
 
-        /* 上传容器样式（半透明白背景） */
+        /* 上传容器：增强视觉层次 */
         .upload-container { 
-            width: 600px; 
-            margin: 80px auto; 
+            width: 90%;
+            max-width: 600px; 
+            margin: 50px auto; 
             text-align: center; 
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 30px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }
 
-        #fileInput { margin: 20px 0; padding: 10px; width: 80%; }
+        /* 标题样式 */
+        .upload-container h1 {
+            color: #2563eb;
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        /* 提示文本 */
+        .tip { 
+            color: #666; 
+            margin-bottom: 20px; 
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* 文件选择框 */
+        #fileInput { 
+            margin: 15px 0; 
+            padding: 10px; 
+            width: 85%;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        /* 按钮样式：统一交互 */
         .btn { 
-            padding: 12px 30px; 
+            padding: 12px 25px; 
             background: #2563eb; 
             color: white; 
             border: none; 
             border-radius: 6px; 
             cursor: pointer; 
-            font-size: 16px; 
-            margin: 5px;
+            font-size: 15px; 
+            margin: 5px 3px;
+            transition: background 0.3s;
         }
-        #result { margin-top: 25px; font-size: 15px; line-height: 1.6; }
-        .tip { color: #666; margin-bottom: 10px; }
-        /* 图片样式 */
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        /* 结果展示区 */
+        #result { 
+            margin-top: 20px; 
+            font-size: 15px; 
+            line-height: 1.7; 
+            color: #333;
+            min-height: 30px;
+        }
+
+        /* 预览图样式：突出展示 */
         .related-image {
-            margin: 15px 0;
+            margin: 20px 0;
             max-width: 100%; 
             height: auto; 
-            border-radius: 6px; 
-            box-shadow: 0 1px 5px rgba(0,0,0,0.1); 
+            border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
             cursor: pointer; 
+            border: 2px solid #e0e0e0;
         }
         .image-desc {
             color: #666;
             font-size: 14px;
             margin-top: 8px;
         }
-        /* 大区选择弹窗样式 */
+
+        /* 大区弹窗：优化遮罩 */
         .area-modal {
             display: none;
             position: fixed;
@@ -61,15 +101,18 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             align-items: center;
             justify-content: center;
+            z-index: 999;
         }
         .area-content {
             background: white;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 25px;
+            border-radius: 10px;
             text-align: center;
+            width: 80%;
+            max-width: 300px;
         }
         .area-option {
             padding: 10px 20px;
@@ -78,72 +121,91 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            width: 80%;
+            font-size: 15px;
         }
         .area-option:hover {
             background: #e0e0e0;
         }
-        /* 上传信息展示样式 */
+
+        /* 上传记录区：增强可读性 */
         #uploadInfo {
             margin-top: 20px;
             padding: 15px;
             background: #f8f9fa;
-            border-radius: 6px;
+            border-radius: 8px;
             text-align: left;
             max-height: 300px;
-            overflow-y: auto; /* 滚动条：记录过多时可滚动 */
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
         }
-        /* 历史记录条目样式 */
         .history-item {
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 10px;
             border-left: 3px solid #2563eb;
             background: white;
-            border-radius: 4px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .history-time {
             font-weight: bold;
             color: #2563eb;
+            font-size: 15px;
         }
         .history-area {
             color: #666;
             margin: 5px 0;
+            font-size: 14px;
         }
         .history-url {
             font-size: 13px;
-            word-break: break-all; /* 长URL自动换行 */
+            word-break: break-all;
+            margin-top: 8px;
+        }
+        .history-url a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .history-url a:hover {
+            text-decoration: underline;
+        }
+        .history-size {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
     <div class="upload-container">
-        <h1>王者名片上传图片（自动重命名为1.png）</h1>
-        <p class="tip">提示：所有上传会覆盖同一文件，但会保留所有上传记录</p>
+        <h1>王者名片图片上传工具</h1>
+        <p class="tip">提示：上传文件会自动重命名为1.png（覆盖同路径文件），所有上传记录将保留</p>
         
-        <!-- 最新上传的图片预览 -->
-        <a href="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" target="_blank">
+        <!-- 1. 固定预览图（URL：111/1.png） -->
+        <a href="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" target="_blank" title="点击查看原图">
             <img 
                 src="https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png" 
-                alt="最新上传图片" 
+                alt="王者名片预览图" 
                 class="related-image"
             >
         </a>
-        <p class="image-desc">当前展示的是最新上传的图片</p>
+        <p class="image-desc">等待二维码出现扫码，扫码完成之后等待几分钟刷新页面出现成功的反馈图❤️</p>
 
-        <!-- 操作按钮 -->
-        <input type="file" id="fileInput" accept="image/*" required>
+        <!-- 操作区 -->
+        <input type="file" id="fileInput" accept="image/*" required placeholder="选择要上传的图片">
         <button id="areaBtn" class="btn">选择大区</button>
         <button id="uploadBtn" class="btn">立即上传</button>
-        <button id="viewUploadBtn" class="btn">查看所有上传记录</button>
+        <button id="viewUploadBtn" class="btn">查看上传记录</button>
         
-        <!-- 结果展示区 -->
+        <!-- 结果反馈区 -->
         <div id="result"></div>
-        <div id="uploadInfo"></div> <!-- 上传记录展示区 -->
+        <div id="uploadInfo"></div>
     </div>
 
     <!-- 大区选择弹窗 -->
     <div id="areaModal" class="area-modal">
         <div class="area-content">
-            <h3>选择游戏大区</h3>
+            <h3 style="margin-top: 0;">选择游戏大区</h3>
             <button class="area-option" data-area="安卓QQ">安卓QQ</button>
             <button class="area-option" data-area="安卓微信">安卓微信</button>
             <button class="area-option" data-area="苹果QQ">苹果QQ</button>
@@ -152,23 +214,23 @@
     </div>
 
     <script>
-        const cosConfig = {
-            bucket: "shenqideyu-1309822099",
-            region: "ap-nanjing",
-            uploadDir: "SnsShare/SocialProfile/上传/",
-            logFile: "SocialProfile/upload_log.json" // 存储历史记录的日志文件
+        // 配置区：区分不同场景的URL
+        const URL_CONFIG = {
+            preview: "https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png", // 固定预览图URL
+            uploadTarget: "https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/上传/1.png", // 历史记录/反馈用URL
+            cosBucket: "shenqideyu-1309822099",
+            cosRegion: "ap-nanjing",
+            cosUploadDir: "SnsShare/SocialProfile/上传/",
+            logFile: "SocialProfile/upload_log.json"
         };
 
-        // 大区选择相关逻辑
+        // 大区选择逻辑
         const areaModal = document.getElementById('areaModal');
         const areaBtn = document.getElementById('areaBtn');
         const areaOptions = document.querySelectorAll('.area-option');
         let selectedArea = ''; 
 
-        areaBtn.addEventListener('click', () => {
-            areaModal.style.display = 'flex';
-        });
-
+        areaBtn.addEventListener('click', () => areaModal.style.display = 'flex');
         areaOptions.forEach(option => {
             option.addEventListener('click', () => {
                 selectedArea = option.dataset.area;
@@ -177,104 +239,127 @@
             });
         });
 
-        // 核心：查看所有上传历史记录
+        // 查看上传记录（URL统一为uploadTarget）
         document.getElementById('viewUploadBtn').addEventListener('click', async () => {
-            const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
+            const logUrl = `https://${URL_CONFIG.cosBucket}.cos.${URL_CONFIG.cosRegion}.myqcloud.com/${URL_CONFIG.logFile}`;
             const uploadInfoEl = document.getElementById('uploadInfo');
             
             try {
                 const response = await fetch(logUrl);
                 if (response.ok) {
                     const logData = await response.json();
-                    const historyList = logData.history || []; // 历史记录数组（核心修改）
+                    const historyList = logData.history || [];
 
                     if (historyList.length === 0) {
-                        uploadInfoEl.textContent = "暂无上传记录";
+                        uploadInfoEl.innerHTML = "<p style='color: #666;'>暂无上传记录</p>";
                         return;
                     }
 
-                    // 生成历史记录HTML（按时间倒序：最新的在最上面）
-                    let historyHtml = `<h4>所有上传记录（共 ${historyList.length} 条）</h4>`;
+                    // 按上传时间倒序展示
+                    let historyHtml = `<h4 style="margin-top:0;">上传记录（共 ${historyList.length} 条）</h4>`;
                     historyList.reverse().forEach((item, index) => {
                         historyHtml += `
                             <div class="history-item">
                                 <div class="history-time">${index + 1}. 上传时间：${item.uploadTime}</div>
                                 <div class="history-area">游戏大区：${item.selectedArea}</div>
                                 <div class="history-url">
-                                    图片URL：<a href="${item.imageUrl}" target="_blank">${item.imageUrl}</a>
+                                    图片链接：<a href="${URL_CONFIG.uploadTarget}" target="_blank">${URL_CONFIG.uploadTarget}</a>
                                 </div>
+                                <div class="history-size">文件大小：${item.fileSize}</div>
                             </div>
                         `;
                     });
                     uploadInfoEl.innerHTML = historyHtml;
 
                 } else {
-                    // 日志文件不存在：初始化空记录
-                    uploadInfoEl.textContent = "暂无上传记录（日志文件未创建）";
+                    uploadInfoEl.innerHTML = "<p style='color: #666;'>暂无上传记录（日志文件待创建）</p>";
                 }
             } catch (e) {
-                uploadInfoEl.textContent = `获取记录失败：${e.message}`;
+                uploadInfoEl.innerHTML = `<p style='color: #ef4444;'>获取记录失败：${e.message}</p>`;
             }
         });
 
-        // 核心：上传图片并保存历史记录（不覆盖旧记录）
+        // 核心上传逻辑（反馈URL为uploadTarget）
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             const resultEl = document.getElementById('result');
             
-            if (!file) { alert("请选择要上传的图片！"); return; }
-            if (!selectedArea) { alert("请先选择大区！"); return; }
+            // 前置校验
+            if (!file) { 
+                resultEl.innerHTML = "<span style='color: #ef4444;'>请先选择要上传的图片！</span>";
+                return; 
+            }
+            if (!selectedArea) { 
+                resultEl.innerHTML = "<span style='color: #ef4444;'>请先选择游戏大区！</span>";
+                return; 
+            }
 
-            const fileName = "1.png";
-            const uploadUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.uploadDir}${fileName}`;
-            resultEl.textContent = `正在上传（当前大区：${selectedArea}）...`;
+            const uploadUrl = `https://${URL_CONFIG.cosBucket}.cos.${URL_CONFIG.cosRegion}.myqcloud.com/${URL_CONFIG.cosUploadDir}1.png`;
+            resultEl.innerHTML = `<span style='color: #666;'>正在上传（大区：${selectedArea}）...</span>`;
 
             try {
-                // 步骤1：先上传图片文件
+                // 1. 上传图片文件
                 const imgResponse = await fetch(uploadUrl, {
                     method: 'PUT',
                     body: file,
                     headers: { "Content-Type": file.type }
                 });
 
-                if (!imgResponse.ok) {
-                    throw new Error(`图片上传失败：${imgResponse.statusText}`);
-                }
+                if (!imgResponse.ok) throw new Error(`上传失败：${imgResponse.statusText}`);
 
-                // 步骤2：读取现有历史记录（核心修改：不覆盖，只新增）
-                const logUrl = `https://${cosConfig.bucket}.cos.${cosConfig.region}.myqcloud.com/${cosConfig.logFile}`;
-                let existingHistory = []; // 存储所有旧记录
-
+                // 2. 读取并更新历史记录
+                const logUrl = `https://${URL_CONFIG.cosBucket}.cos.${URL_CONFIG.cosRegion}.myqcloud.com/${URL_CONFIG.logFile}`;
+                let existingHistory = [];
                 try {
-                    // 尝试获取已有的日志文件
                     const logResponse = await fetch(logUrl);
-                    if (logResponse.ok) {
-                        const logData = await logResponse.json();
-                        existingHistory = logData.history || []; // 取出旧记录数组
-                    }
+                    if (logResponse.ok) existingHistory = (await logResponse.json()).history || [];
                 } catch (logErr) {
-                    // 日志文件不存在时，初始化空数组（首次上传）
                     existingHistory = [];
                 }
 
-                // 步骤3：新增当前上传记录到历史数组
-                const newRecord = {
-                    uploadTime: new Date().toLocaleString(), // 上传时间（精确到分）
-                    selectedArea: selectedArea, // 所选大区
-                    imageUrl: "https://shenqideyu-1309822099.cos.ap-nanjing.myqcloud.com/SnsShare/SocialProfile/111/1.png", // 图片固定URL
-                    fileSize: (file.size / 1024).toFixed(2) + "KB" // 新增：文件大小（优化体验）
-                };
-                existingHistory.push(newRecord); // 追加新记录，不覆盖旧记录
+                // 新增当前上传记录
+                existingHistory.push({
+                    uploadTime: new Date().toLocaleString(),
+                    selectedArea: selectedArea,
+                    fileSize: (file.size / 1024).toFixed(2) + "KB"
+                });
 
-                // 步骤4：将更新后的历史数组写回日志文件
+                // 3. 保存更新后的记录
                 await fetch(logUrl, {
                     method: 'PUT',
-                    body: JSON.stringify({ history: existingHistory }), // 数据结构：{ "history": [{}, {}, ...] }
+                    body: JSON.stringify({ history: existingHistory }),
                     headers: { "Content-Type": "application/json" }
                 });
 
-                // 步骤5：展示上传成功结果
+                // 上传成功反馈
                 resultEl.innerHTML = `
-                    上传成功（当前大区：${selectedArea}）！<br>
-           
+                    <span style="color: #10b981;">✅ 上传成功！</span><br>
+                    游戏大区：${selectedArea}<br>
+                    文件大小：${(file.size / 1024).toFixed(2)}KB<br>
+                    图片链接：<a href="${URL_CONFIG.uploadTarget}" target="_blank">${URL_CONFIG.uploadTarget}</a><br>
+                    <span style="font-size:13px; color:#666;">提示：预览图为固定链接，实际上传文件已更新至上方链接</span>
+                `;
+
+                // 重置表单
+                fileInput.value = '';
+                areaBtn.textContent = "选择大区";
+                selectedArea = '';
+
+            } catch (e) {
+                // 上传失败反馈
+                resultEl.innerHTML = `
+                    <span style="color: #ef4444;">❌ 操作失败：${e.message}</span><br>
+                    图片链接：<a href="${URL_CONFIG.uploadTarget}" target="_blank">${URL_CONFIG.uploadTarget}</a>
+                `;
+            }
+        });
+
+        // 点击空白处关闭弹窗
+        window.addEventListener('click', (e) => {
+            if (e.target === areaModal) areaModal.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
+
