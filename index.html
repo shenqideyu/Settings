@@ -277,15 +277,4 @@
                 // 步骤5：展示上传成功结果
                 resultEl.innerHTML = `
                     上传成功（当前大区：${selectedArea}）！<br>
-                    最终文件URL：<a href="${uploadUrl}" target="_blank">${uploadUrl}</a><br>
-                    文件大小：${newRecord.fileSize}<br>
-                    点击「查看所有上传记录」可查看历史记录
-                `;
-
-            } catch (e) {
-                resultEl.textContent = `上传出错：${e.message}`;
-            }
-        });
-    </script>
-</body>
-</html>
+           
